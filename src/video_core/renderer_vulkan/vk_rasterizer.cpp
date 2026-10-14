@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: Copyright 2024 shadPS4 Emulator Project
+// SPDX-FileCopyrightText: Copyright 2024 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <algorithm>
@@ -404,6 +404,18 @@ void Rasterizer::DispatchDirect() {
     }
 
     const auto& cs = pipeline->GetStage(Shader::SwStage::Compute);
+    static const bool log_dispatch = [] {
+        const char* env = std::getenv("SHADPS4_LOG_DISPATCH");
+        return env && env[0] == '1';
+    }();
+    if (log_dispatch) {
+        static std::set<std::tuple<u64, u32, u32, u32>> logged;
+        if (logged.emplace(cs.pgm_hash, cs_program.dim_x, cs_program.dim_y, cs_program.dim_z)
+                .second) {
+            LOG_INFO(Render_Vulkan, "DISPATCH hash={:#018x} dims={}x{}x{}", cs.pgm_hash,
+                     cs_program.dim_x, cs_program.dim_y, cs_program.dim_z);
+        }
+    }
     VideoCore::NotifyComputeDispatch(cs.pgm_hash);
     if (ExecuteShaderHLE(cs, liverpool->regs, cs_program, *this)) {
         return;
